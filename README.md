@@ -1,14 +1,23 @@
 # Allo Inventory Reservations
 
-Focused implementation of a multi-warehouse stock reservation flow for checkout. The app uses Next.js App Router, TypeScript, Prisma, and Postgres.
+A multi-warehouse stock reservation system that prevents overselling during checkout. When customers proceed to payment, units are temporarily held for 10 minutes. If payment succeeds, the hold becomes permanent. If payment fails or time expires, units return to available inventory.
+
+**Tech**: Next.js 15, TypeScript, Prisma, PostgreSQL
 
 ## What is included
 
 - Product and warehouse inventory with `totalUnits`, `reservedUnits`, and computed availability.
 - Pending, confirmed, and released reservations with an `expiresAt` deadline.
 - API routes for products, warehouses, reserve, confirm, release, and expiry cleanup.
-- A small frontend for reserving one unit, viewing the checkout countdown, confirming, and cancelling.
+- Frontend for searching products, reserving units, viewing checkout countdown, and confirming/cancelling orders.
 - Idempotency support for `POST /api/reservations` and `POST /api/reservations/:id/confirm`.
+- Concurrency smoke test to verify race condition handling.
+
+## Frontend
+
+- **Product Listing** (`/`): Browse products by warehouse with stock levels. Click "Reserve" to hold a unit.
+- **Checkout** (`/reservations/:id`): See countdown timer, product details, and warehouse info. Confirm purchase or cancel. Success popup appears after confirming, then redirects back to inventory.
+- **Error Handling**: 409 (insufficient stock) and 410 (expired) errors shown to users.
 
 ## Local setup
 
@@ -84,9 +93,27 @@ The app uses both lazy cleanup and a cron endpoint:
 
 `POST /api/reservations` and `POST /api/reservations/:id/confirm` accept an `Idempotency-Key` header. The server creates a unique record for `(key, method, path)`. Retries with the same key return the stored response instead of repeating the side effect. If an identical request is still running, the second request briefly waits for the stored result and then returns `409` if it is still in progress.
 
+## Vercel Deployment
+
+1. Push to GitHub: `git push origin main`
+2. Go to [vercel.com](https://allo-inventory-reservation-2.vercel.app/) → Add Project → import your repo
+3. Set environment variables: `DATABASE_URL`, `DIRECT_URL`, `CRON_SECRET`, etc.
+4. Deploy
+5. Run: `npm run prisma:deploy && npm run seed`
+
+**Note**: Free tier doesn't support frequent cron. Lazy cleanup handles expiry during active traffic.
+
 ## Trade-offs
 
-- The frontend reserves one unit at a time to keep the exercise focused. The API supports larger quantities.
-- Expiry cleanup processes 100 reservations per transaction. A production worker would loop until no expired rows remain and emit metrics.
-- This uses Postgres transactions rather than Redis locks. For this data model, the inventory row is the lock, which keeps the correctness boundary close to the data being protected.
-- The live deployment still needs a hosted Postgres URL and seeded data. No local SQLite fallback is included because the exercise specifically asks for hosted Postgres.
+- **One unit at a time**: Frontend reserves 1 unit per click to keep it simple. API supports bulk quantities.
+- **Batch cleanup**: Processes 100 expired reservations per transaction. Could scale with background workers.
+- **Postgres locking**: Uses row-level locks instead of Redis. Works well for this data model since inventory rows are the source of truth.
+- **No SQLite**: Uses hosted Postgres as required. No local fallback for demo purposes.
+
+## Future improvements
+
+- Multi-unit cart (allow reserving 2, 5, 10 units)
+- Admin dashboard for reservation analytics
+- Payment integration (Razorpay, Stripe webhooks)
+- E2E tests with Playwright
+- Better warehouse search/filtering
