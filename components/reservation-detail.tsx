@@ -49,6 +49,7 @@ export function ReservationDetail({ reservationId }: { reservationId: string }) 
   const [error, setError] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<"confirm" | "release" | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [showCancelled, setShowCancelled] = useState(false);
 
   const loadReservation = useCallback(async () => {
     setError(null);
@@ -71,13 +72,13 @@ export function ReservationDetail({ reservationId }: { reservationId: string }) 
   }, []);
 
   useEffect(() => {
-    if (showSuccess) {
+    if (showSuccess || showCancelled) {
       const redirectTimer = window.setTimeout(() => {
         router.push("/");
       }, 1500);
       return () => window.clearTimeout(redirectTimer);
     }
-  }, [showSuccess, router]);
+  }, [showSuccess, showCancelled, router]);
 
   const remainingMs = useMemo(() => {
     if (!reservation) {
@@ -109,6 +110,8 @@ export function ReservationDetail({ reservationId }: { reservationId: string }) 
 
       if (action === "confirm") {
         setShowSuccess(true);
+      } else if (action === "release") {
+        setShowCancelled(true);
       }
     } catch (actionError) {
       setError(actionError instanceof Error ? actionError.message : "Action failed.");
@@ -126,6 +129,21 @@ export function ReservationDetail({ reservationId }: { reservationId: string }) 
             <div className="success-icon">✓</div>
             <h2>Purchase Confirmed!</h2>
             <p>Your reservation has been confirmed successfully.</p>
+            <p className="small">Redirecting back...</p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (showCancelled) {
+    return (
+      <main className="shell narrow">
+        <div className="success-popup">
+          <div className="success-content">
+            <div className="cancelled-icon">✕</div>
+            <h2>Reservation Cancelled</h2>
+            <p>Your reservation has been released. Units returned to inventory.</p>
             <p className="small">Redirecting back...</p>
           </div>
         </div>

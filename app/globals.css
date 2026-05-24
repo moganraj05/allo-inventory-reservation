@@ -338,6 +338,20 @@ button:active:not(:disabled) {
   font-weight: 800;
 }
 
+.cancelled-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 24px;
+  background: #ffe5e1;
+  border-radius: 50%;
+  font-size: 32px;
+  color: var(--danger);
+  font-weight: 800;
+}
+
 .success-content h2 {
   margin: 0 0 12px;
   font-size: 28px;
